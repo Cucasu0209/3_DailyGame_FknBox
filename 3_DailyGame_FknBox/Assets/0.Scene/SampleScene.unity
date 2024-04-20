@@ -104,7 +104,7 @@ NavMeshSettings:
   serializedVersion: 2
   m_ObjectHideFlags: 0
   m_BuildSettings:
-    serializedVersion: 2
+    serializedVersion: 3
     agentTypeID: 0
     agentRadius: 0.5
     agentHeight: 2
@@ -117,7 +117,7 @@ NavMeshSettings:
     cellSize: 0.16666667
     manualTileSize: 0
     tileSize: 256
-    accuratePlacement: 0
+    buildHeightMesh: 0
     maxJobWorkers: 0
     preserveTilesOutsideBounds: 0
     debug:
@@ -159,13 +159,21 @@ Camera:
   m_Enabled: 1
   serializedVersion: 2
   m_ClearFlags: 2
-  m_BackGroundColor: {r: 0.19215687, g: 0.3019608, b: 0.4745098, a: 0}
+  m_BackGroundColor: {r: 1, g: 1, b: 1, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
   m_FOVAxisMode: 0
+  m_Iso: 200
+  m_ShutterSpeed: 0.005
+  m_Aperture: 16
+  m_FocusDistance: 10
+  m_FocalLength: 50
+  m_BladeCount: 5
+  m_Curvature: {x: 2, y: 11}
+  m_BarrelClipping: 0.25
+  m_Anamorphism: 0
   m_SensorSize: {x: 36, y: 24}
   m_LensShift: {x: 0, y: 0}
-  m_FocalLength: 50
   m_NormalizedViewPortRect:
     serializedVersion: 2
     x: 0
@@ -176,7 +184,7 @@ Camera:
   far clip plane: 1000
   field of view: 60
   orthographic: 1
-  orthographic size: 5
+  orthographic size: 0.6
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -199,10 +207,142 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 519420028}
+  serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1150928501
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1150928505}
+  - component: {fileID: 1150928504}
+  - component: {fileID: 1150928503}
+  - component: {fileID: 1150928502}
+  m_Layer: 0
+  m_Name: Manager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1150928502
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1150928501}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e02b858ecbb7274aa045ce6d375c452, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  MainBox: {fileID: 0}
+--- !u!114 &1150928503
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1150928501}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f361aef362ba1324e94016c2c11d3db3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &1150928504
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1150928501}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1786b927d2329a54192676e8d1e46546, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  CamsizePerUnit: 0.6
+  MainBoxPrefab: {fileID: 4716241283698728750, guid: fcb91a33ea865624b9eedffd7c0524ed, type: 3}
+  BoxPrefab: {fileID: 3005752167065659453, guid: e591d1d95916fa0419cea482aa3df9ff, type: 3}
+  Props:
+  - External:
+      Parent: 2
+      Position: {x: 1, y: 2}
+    Internal:
+      Id: 0
+      Size: {x: 5, y: 5}
+      DoorDir: 4
+      DoorPositionInside: {x: 0, y: 0}
+      BorderColor: {r: 0.3301887, g: 0.3301887, b: 0.3301887, a: 1}
+      InsideColor: {r: 0.9056604, g: 0.9056604, b: 0.9056604, a: 1}
+  - External:
+      Parent: 0
+      Position: {x: 1, y: 1}
+    Internal:
+      Id: 1
+      Size: {x: 5, y: 5}
+      DoorDir: 2
+      DoorPositionInside: {x: 2, y: 0}
+      BorderColor: {r: 0.5754717, g: 0.48165897, b: 0.13246706, a: 1}
+      InsideColor: {r: 0.8759294, g: 0.9622642, b: 0.33043784, a: 1}
+  - External:
+      Parent: 0
+      Position: {x: 0, y: 3}
+    Internal:
+      Id: 2
+      Size: {x: 5, y: 5}
+      DoorDir: 1
+      DoorPositionInside: {x: 2, y: 0}
+      BorderColor: {r: 0.6037736, g: 0.17315768, b: 0.17315768, a: 1}
+      InsideColor: {r: 0.9811321, g: 0.54980415, b: 0.54980415, a: 1}
+  - External:
+      Parent: 1
+      Position: {x: 2, y: 1}
+    Internal:
+      Id: 3
+      Size: {x: 5, y: 5}
+      DoorDir: 2
+      DoorPositionInside: {x: 2, y: 0}
+      BorderColor: {r: 0.22216736, g: 0.6039216, b: 0.17254901, a: 1}
+      InsideColor: {r: 0.5665814, g: 0.98039216, b: 0.54901963, a: 1}
+  - External:
+      Parent: 2
+      Position: {x: 2, y: 1}
+    Internal:
+      Id: 4
+      Size: {x: 5, y: 5}
+      DoorDir: 1
+      DoorPositionInside: {x: 2, y: 2}
+      BorderColor: {r: 0.6039216, g: 0.17254901, b: 0.5594299, a: 1}
+      InsideColor: {r: 0.9445657, g: 0.54901963, b: 0.98039216, a: 1}
+--- !u!4 &1150928505
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1150928501}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.25725392, y: -0.08786322, z: -0.014700825}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1660057539 &9223372036854775807
+SceneRoots:
+  m_ObjectHideFlags: 0
+  m_Roots:
+  - {fileID: 519420032}
+  - {fileID: 1150928505}
