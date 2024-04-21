@@ -11,6 +11,7 @@ public class Map : MonoBehaviour
     public List<ExtendableBoxProperty> Props;
     void Start()
     {
+        GameManager.Instance.Props = Props;
         BaseBox Root = Instantiate(MainBoxPrefab, Vector3.zero, Quaternion.identity);
         GameManager.Instance.MainBox = Root.gameObject.GetComponent<MainBox>();
         Root.Setup(0, Props[0]);
@@ -18,9 +19,9 @@ public class Map : MonoBehaviour
         CreateFullMap();
         GameManager.Instance.OnMainLevelChange += OnLevelChange;
 
+
         OnLevelChange();
     }
-
     private void CreateFullMap()
     {
         CreateChild(CreateParent(GameManager.Instance.MainBox));
@@ -76,9 +77,16 @@ public class Map : MonoBehaviour
     IEnumerator DelayOneFrame()
     {
         yield return new WaitForEndOfFrame();
-        CreateFullMap();
-        Camera.main.transform.DOMove(CreateParent(GameManager.Instance.MainBox).transform.position + Vector3.forward * -10, 0.3f).SetEase(Ease.Linear).SetDelay(0.1f);
-        Camera.main.DOOrthoSize(CamsizePerUnit * (CreateParent(GameManager.Instance.MainBox).transform.lossyScale.x), 0.3f).SetEase(Ease.Linear).SetDelay(0.1f);
+        yield return new WaitForEndOfFrame();
+        yield return new WaitForEndOfFrame();
+        Transform mainParent = GameManager.Instance.GetBoxInLevel(GameManager.Instance.MainBox.GetLevel() + 1, GameManager.Instance.MainBox.Prop.External.Parent)?.transform;
+        if (mainParent == null)
+        {
+            mainParent = CreateParent(GameManager.Instance.MainBox).transform;
+        }
+        Camera.main.transform.parent = mainParent;
+        Camera.main.transform.DOLocalMove(Vector3.forward * -10, 0.3f).SetEase(Ease.Linear).SetDelay(0.1f);
+        Camera.main.DOOrthoSize(CamsizePerUnit * mainParent.lossyScale.x, 0.3f).SetEase(Ease.Linear).SetDelay(0.1f);
 
     }
 }

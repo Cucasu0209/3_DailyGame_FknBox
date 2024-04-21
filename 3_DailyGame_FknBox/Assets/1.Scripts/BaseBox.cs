@@ -1,8 +1,15 @@
 
 using UnityEngine;
 using DG.Tweening;
-using TreeEditor;
+using System.Collections.Generic;
+using static UnityEngine.RuleTile.TilingRuleOutput;
+using UnityEngine.UIElements;
+using System.ComponentModel;
+using Unity.VisualScripting;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Collections;
+
+
 public enum MoveType
 {
     GoOutSide,
@@ -13,11 +20,17 @@ public enum MoveType
 }
 public class BaseBox : MonoBehaviour
 {
-    private int Level;
+    [SerializeField] private int Level;
     public ExtendableBoxProperty Prop;
     public SpriteRenderer Border;
     public SpriteRenderer Inside;
 
+    public virtual void Start()
+    {
+        GameManager.Instance.OnMove += OnPropChange;
+    }
+
+    #region Init
     public virtual void Setup(int level, ExtendableBoxProperty myProp, BaseBox parent = null)
     {
         SetLevel(level);
@@ -29,14 +42,6 @@ public class BaseBox : MonoBehaviour
             transform.localPosition = parent.GetLocalWorldPosition(myProp.External.Position);
             transform.localScale = parent.GetChildScale();
         }
-    }
-    private bool CheckOppositeDir(Direction a, Direction b)
-    {
-        return a == Direction.Top && b == Direction.Bottom
-        || a == Direction.Bottom && b == Direction.Top
-        || a == Direction.Left && b == Direction.Right
-        || a == Direction.Right && b == Direction.Left;
-
     }
     public Vector2 GetLocalWorldPosition(Vector2Int position)
     {
@@ -58,21 +63,111 @@ public class BaseBox : MonoBehaviour
     }
     public virtual void SetLevel(int level) { Level = level; }
     public int GetLevel() => Level;
+    #endregion
 
     #region Action Move
+    public void Move(Direction dir)
+    {
+        Dictionary<int, MoveType> moveResult = Prop.Move(dir);
+        foreach (var res in moveResult)
+        {
+            GameManager.Instance.OnMove?.Invoke(res.Key, dir, res.Value);
+        }
+        SetLevel(GetLevel());
+    }
+    private void FreeMove(Direction dir)
+    {
+        BaseBox boxParent = GameManager.Instance.GetBoxInLevel(Level + 1, Prop.External.Parent);
+        if (boxParent == null) return;
+        transform.DOLocalMove(boxParent.GetLocalWorldPosition(Prop.External.Position), 0.2f).SetEase(Ease.Linear);
+    }
+    private IEnumerator MoveToOutside(Direction dir)
+    {
+        if (this is MainBox && this.GetLevel() > GameManager.Instance.MainBox.GetLevel()) { }
+        else
+        {
+            GameManager.Instance.RemoveFromLevel(GetLevel(), this);
+            SetLevel(GetLevel() + 1);
+            GameManager.Instance.AddToLevel(GetLevel(), this);
+
+            yield return new WaitForEndOfFrame();
+
+            ExtendableBox lastParent = GameManager.Instance.GetBoxInLevel(GetLevel(), Prop.GetSibling(ExtendableBoxProperty.GetOppositeDir(dir)).Internal.Id)?.gameObject.GetComponent<ExtendableBox>();
+            if (lastParent != null)
+            {
+                transform.DOLocalMove(lastParent.GetLocalPosOutsideDoor(), 0.1f).SetEase(Ease.Linear).OnComplete(() =>
+                {
+                    BaseBox boxParent = GameManager.Instance.GetBoxInLevel(GetLevel() + 1, Prop.External.Parent).gameObject.GetComponent<BaseBox>();
+                    transform.parent = boxParent.Inside.transform;
+                    transform.DOScale(boxParent.GetChildScale(), 0.1f).SetEase(Ease.Linear);
+                    transform.DOLocalMove(boxParent.GetLocalWorldPosition(Prop.External.Position), 0.1f).SetEase(Ease.Linear);
+                });
+            }
+        }
+    }
+    private IEnumerator MoveToInside(Direction dir)
+    {
+        if (this is MainBox && this.GetLevel() > GameManager.Instance.MainBox.GetLevel()) { }
+        else
+        {
+            GameManager.Instance.RemoveFromLevel(GetLevel(), this);
+            SetLevel(GetLevel() - 1);
+            GameManager.Instance.AddToLevel(GetLevel(), this);
+
+            yield return new WaitForEndOfFrame();
+
+            ExtendableBox boxParent = GameManager.Instance.GetBoxInLevel(GetLevel() + 1, Prop.External.Parent)?.gameObject.GetComponent<ExtendableBox>();
+            if (boxParent != null)
+            {
+                transform.parent = boxParent.Inside.transform;
+                transform.DOScale(boxParent.GetChildScale(), 0.1f).SetEase(Ease.Linear);
+                transform.DOLocalMove(boxParent.GetLocalPosOutsideDoor(), 0.1f).SetEase(Ease.Linear).OnComplete(() =>
+                {
+                    transform.DOLocalMove(boxParent.GetLocalPosInsideDoor(), 0.1f).SetEase(Ease.Linear);
+                });
+            }
+
+        }
+    }
+    public void OnPropChange(int id, Direction dir, MoveType moveType)
+    {
+        if (id == Prop.Internal.Id)
+        {
+            Debug.Log("level: " + GetLevel() + ",id: " + Prop.Internal.Id + ",type: " + moveType.ToString());
+            if (moveType == MoveType.NoObstacle || moveType == MoveType.Push) FreeMove(dir);
+            else if (moveType == MoveType.GoOutSide) StartCoroutine(MoveToOutside(dir));
+            else if (moveType == MoveType.GoInSide) StartCoroutine(MoveToInside(dir));
+        }
+    }
+    #endregion
+}
+
+[System.Serializable]
+public class ExtendableBoxProperty
+{
+    public ExternalFeature External;
+    public InternalFeature Internal;
+
+    public static bool CheckOppositeDir(Direction a, Direction b)
+    {
+        return a == Direction.Top && b == Direction.Bottom
+        || a == Direction.Bottom && b == Direction.Top
+        || a == Direction.Left && b == Direction.Right
+        || a == Direction.Right && b == Direction.Left;
+    }
     public MoveType CheckMove(Direction dir)
     {
         //new assumption position
-        BaseBox boxParent = GameManager.Instance.GetBoxInLevel(Level + 1, Prop.External.Parent);
-        ExtendableBoxProperty propParent = boxParent.Prop;
-        Vector2Int newPosion = GetNextMove(dir);
+        //   BaseBox boxParent = GameManager.Instance.GetBoxInLevel(Level + 1, Prop.External.Parent);
+        ExtendableBoxProperty propParent = GameManager.Instance.GetProp(External.Parent);
+        Vector2Int newPosion = External.GetNextMove(dir);
         //check door parent
-        if (propParent.Internal.DoorPositionInside.Equals(Prop.External.Position)
+        if (propParent.Internal.DoorPositionInside.Equals(External.Position)
               && propParent.Internal.DoorDir == dir)
         {
-            foreach (BaseBox ParentSibling in GameManager.Instance.GetBoxes(Level + 1))
+            foreach (ExtendableBoxProperty ParentSibling in GameManager.Instance.Props)
             {
-                if (propParent.External.Parent == ParentSibling.Prop.External.Parent && boxParent.GetNextMove(dir).Equals(ParentSibling.Prop.External.Position))
+                if (propParent.External.Parent == ParentSibling.External.Parent && propParent.External.GetNextMove(dir).Equals(ParentSibling.External.Position))
                 {
                     switch (ParentSibling.CheckMove(dir))
                     {
@@ -97,16 +192,16 @@ public class BaseBox : MonoBehaviour
         }
 
         //check next box
-        foreach (BaseBox NextSibling in GameManager.Instance.GetBoxes(Level))
+        foreach (ExtendableBoxProperty NextSibling in GameManager.Instance.Props)
         {
-            if (NextSibling.Prop.External.Parent == Prop.External.Parent && newPosion.Equals(NextSibling.Prop.External.Position))
+            if (NextSibling.External.Parent == External.Parent && newPosion.Equals(NextSibling.External.Position))
             {
                 //check door next box
-                if (CheckOppositeDir(dir, NextSibling.Prop.Internal.DoorDir))
+                if (CheckOppositeDir(dir, NextSibling.Internal.DoorDir))
                 {
-                    foreach (BaseBox ChildSibling in GameManager.Instance.GetBoxes(Level - 1))
+                    foreach (ExtendableBoxProperty ChildSibling in GameManager.Instance.Props)
                     {
-                        if (NextSibling.Prop.Internal.Id == ChildSibling.Prop.External.Parent && ChildSibling.Prop.External.Position.Equals(NextSibling.Prop.Internal.DoorPositionInside))
+                        if (NextSibling.Internal.Id == ChildSibling.External.Parent && ChildSibling.External.Position.Equals(NextSibling.Internal.DoorPositionInside))
                         {
                             switch (ChildSibling.CheckMove(dir))
                             {
@@ -140,94 +235,85 @@ public class BaseBox : MonoBehaviour
         //normal move
         return MoveType.NoObstacle;
     }
-    public Vector2Int GetNextMove(Direction dir)
+    public Dictionary<int, MoveType> Move(Direction dir)
     {
-        Vector2Int newPosion = new Vector2Int(Prop.External.Position.x, Prop.External.Position.y);
-        switch (dir)
-        {
-            case Direction.Left: newPosion = new Vector2Int(Prop.External.Position.x - 1, Prop.External.Position.y); break;
-            case Direction.Right: newPosion = new Vector2Int(Prop.External.Position.x + 1, Prop.External.Position.y); break;
-            case Direction.Top: newPosion = new Vector2Int(Prop.External.Position.x, Prop.External.Position.y + 1); break;
-            case Direction.Bottom: newPosion = new Vector2Int(Prop.External.Position.x, Prop.External.Position.y - 1); break;
-        }
-        return newPosion;
-    }
-    public void Move(Direction dir)
-    {
+        ExtendableBoxProperty sibling = GetSibling(dir);
+        ExtendableBoxProperty parent = GetParent();
         MoveType moveType = CheckMove(dir);
-        Debug.Log(moveType.ToString());
-        if (moveType == MoveType.NoObstacle) FreeMove(dir);
-        else if (moveType == MoveType.GoOutSide) MoveToOutside(dir);
-        else if (moveType == MoveType.GoInSide) MoveToInside(dir);
-        else if (moveType == MoveType.Push) MoveAndPush(dir);
-    }
-    private void FreeMove(Direction dir)
-    {
-        BaseBox boxParent = GameManager.Instance.GetBoxInLevel(Level + 1, Prop.External.Parent);
-        Vector2Int newPosion = GetNextMove(dir);
-        Prop.External.Position = newPosion;
-        transform.DOLocalMove(boxParent.GetLocalWorldPosition(newPosion), 0.2f).SetEase(Ease.Linear);
-    }
-    private void MoveToOutside(Direction dir)
-    {
-        ExtendableBox boxParent = GameManager.Instance.GetBoxInLevel(Level + 1, Prop.External.Parent).gameObject.GetComponent<ExtendableBox>();
-        foreach (BaseBox ParentSibling in GameManager.Instance.GetBoxes(Level + 1))
+        Dictionary<int, MoveType> result = new Dictionary<int, MoveType>()
         {
-            if (boxParent.Prop.External.Parent == ParentSibling.Prop.External.Parent && boxParent.GetNextMove(dir).Equals(ParentSibling.Prop.External.Position))
-            {
-                ParentSibling.Move(dir);
-                break;
-            }
-        }
-        boxParent.GoOutsideMe(this);
-    }
-    private void MoveToInside(Direction dir)
-    {
-        Vector2Int newPosion = GetNextMove(dir);
-        foreach (BaseBox NextSibling in GameManager.Instance.GetBoxes(Level))
+            {Internal.Id, moveType},
+        };
+        Debug.Log(Internal.Id + " " + moveType);
+        if (moveType == MoveType.NoObstacle)
         {
-            if (NextSibling.Prop.External.Parent == Prop.External.Parent && newPosion.Equals(NextSibling.Prop.External.Position))
-            {
-                //check door next box
-                if (CheckOppositeDir(dir, NextSibling.Prop.Internal.DoorDir))
-                {
-                    foreach (BaseBox ChildSibling in GameManager.Instance.GetBoxes(Level - 1))
-                    {
-                        if (NextSibling.Prop.Internal.Id == ChildSibling.Prop.External.Parent && ChildSibling.Prop.External.Position.Equals(NextSibling.Prop.Internal.DoorPositionInside))
-                        {
-                            ChildSibling.Move(dir);
-                            break;
-                        }
-                    }
-                    ExtendableBox NewParent = NextSibling.gameObject.GetComponent<ExtendableBox>();
-                    NewParent.GoInsideMe(this);
-                    return;
-                }
-            }
+            External.Position = External.GetNextMove(dir);
         }
-    }
-    private void MoveAndPush(Direction dir)
-    {
-        Vector2Int newPosion = GetNextMove(dir);
-        foreach (BaseBox NextSibling in GameManager.Instance.GetBoxes(Level))
+        else if (moveType == MoveType.GoOutSide)
         {
-            if (NextSibling.Prop.External.Parent == Prop.External.Parent && newPosion.Equals(NextSibling.Prop.External.Position))
-            {
-                FreeMove(dir);
-                NextSibling.Move(dir);
-                return;
-            }
+            sibling = parent.GetSibling(dir);
+            if (sibling != null) result.Add(sibling.Internal.Id, sibling.Move(dir)[sibling.Internal.Id]);
+            External.Parent = parent.External.Parent;
+            External.Position = parent.External.GetNextMove(dir);
         }
-    }
+        else if (moveType == MoveType.GoInSide)
+        {
+            sibling = sibling.GetChild(sibling.Internal.DoorPositionInside);
+            if (sibling != null) result.Add(sibling.Internal.Id, sibling.Move(dir)[sibling.Internal.Id]);
+            sibling = GetSibling(dir);
+            External.Parent = sibling.Internal.Id;
+            External.Position = sibling.Internal.DoorPositionInside;
+        }
+        else if (moveType == MoveType.Push)
+        {
 
-    #endregion
-}
+            External.Position = External.GetNextMove(dir);
+            result.Add(sibling.Internal.Id, sibling.Move(dir)[sibling.Internal.Id]);
+        }
 
-[System.Serializable]
-public class ExtendableBoxProperty
-{
-    public ExternalFeature External;
-    public InternalFeature Internal;
+        return result;
+    }
+    public ExtendableBoxProperty GetSibling(Direction dir)
+    {
+        foreach (ExtendableBoxProperty sibling in GameManager.Instance.Props)
+        {
+            if (sibling.External.Parent == External.Parent && External.GetNextMove(dir).Equals(sibling.External.Position))
+            {
+                return sibling;
+            }
+        }
+        return null;
+    }
+    public ExtendableBoxProperty GetParent()
+    {
+        foreach (ExtendableBoxProperty parent in GameManager.Instance.Props)
+        {
+            if (parent.Internal.Id == External.Parent)
+            {
+                return parent;
+            }
+        }
+        return null;
+    }
+    public ExtendableBoxProperty GetChild(Vector2Int position)
+    {
+        foreach (ExtendableBoxProperty child in GameManager.Instance.Props)
+        {
+            if (Internal.Id == child.External.Parent && position.Equals(child.External.Position))
+            {
+                return child;
+            }
+        }
+        return null;
+    }
+    public static Direction GetOppositeDir(Direction dir)
+    {
+        if (dir == Direction.Left) return Direction.Right;
+        if (dir == Direction.Right) return Direction.Left;
+        if (dir == Direction.Top) return Direction.Bottom;
+        if (dir == Direction.Bottom) return Direction.Top;
+        return Direction.None;
+    }
 }
 
 [System.Serializable]
@@ -235,6 +321,19 @@ public class ExternalFeature
 {
     public int Parent;
     public Vector2Int Position;//(DOWN,LEFT)->(0,0)
+
+    public Vector2Int GetNextMove(Direction dir)
+    {
+        Vector2Int newPosion = new Vector2Int(Position.x, Position.y);
+        switch (dir)
+        {
+            case Direction.Left: newPosion = new Vector2Int(Position.x - 1, Position.y); break;
+            case Direction.Right: newPosion = new Vector2Int(Position.x + 1, Position.y); break;
+            case Direction.Top: newPosion = new Vector2Int(Position.x, Position.y + 1); break;
+            case Direction.Bottom: newPosion = new Vector2Int(Position.x, Position.y - 1); break;
+        }
+        return newPosion;
+    }
 }
 
 [System.Serializable]
@@ -246,6 +345,7 @@ public class InternalFeature
     public Vector2Int DoorPositionInside;
     public Color BorderColor;
     public Color InsideColor;
+
 }
 
 public enum Direction

@@ -9,12 +9,14 @@ public class GameManager : MonoBehaviour
     public static GameManager Instance;
 
     public Action OnMainLevelChange;
+    public Action<int, Direction, MoveType> OnMove;
     private void Awake()
     {
         Instance = this;
     }
     public MainBox MainBox;
-    private Dictionary<int, List<BaseBox>> Boxes = new Dictionary<int, List<BaseBox>>();
+    [SerializeField] private Dictionary<int, List<BaseBox>> Boxes = new Dictionary<int, List<BaseBox>>();
+    public List<ExtendableBoxProperty> Props;
 
     public BaseBox GetBoxInLevel(int level, int id)
     {
@@ -22,6 +24,14 @@ public class GameManager : MonoBehaviour
         foreach (var box in Boxes[level])
         {
             if (box.Prop.Internal.Id == id) return box;
+        }
+        return null;
+    }
+    public ExtendableBoxProperty GetProp(int id)
+    {
+        foreach (var prop in Props)
+        {
+            if (prop.Internal.Id == id) return prop;
         }
         return null;
     }
@@ -38,7 +48,8 @@ public class GameManager : MonoBehaviour
 
     public List<BaseBox> GetBoxes(int level)
     {
-        if(!Boxes.ContainsKey(level)) return null;
+        if (!Boxes.ContainsKey(level)) return null;
         else return Boxes[level];
     }
+
 }

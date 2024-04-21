@@ -12,10 +12,6 @@ public class ExtendableBox : BaseBox
     #endregion
 
     #region Unity
-    private void Start()
-    {
-
-    }
     #endregion
 
     #region Actions
@@ -51,11 +47,11 @@ public class ExtendableBox : BaseBox
         }
         Door.transform.parent = Inside.transform;
     }
-    private Vector3 GetLocalPosOutsideDoor()
+    public Vector3 GetLocalPosOutsideDoor()
     {
         return Door.transform.localPosition * 2 - GetLocalPosInsideDoor();
     }
-    private Vector3 GetLocalPosInsideDoor()
+    public Vector3 GetLocalPosInsideDoor()
     {
         return GetLocalWorldPosition(Prop.Internal.DoorPositionInside);
     }
@@ -82,7 +78,7 @@ public class ExtendableBox : BaseBox
             box.SetLevel(GetLevel());
             box.transform.parent = transform.parent;
             box.Prop.External.Parent = Prop.External.Parent;
-            box.Prop.External.Position = GetNextMove(Prop.Internal.DoorDir);
+            box.Prop.External.Position = Prop.External.GetNextMove(Prop.Internal.DoorDir);
             BaseBox boxParent = GameManager.Instance.GetBoxInLevel(GetLevel() + 1, Prop.External.Parent);
             box.transform.DOScale(boxParent.GetChildScale(), 0.1f).SetEase(Ease.Linear);
             box.transform.DOLocalMove(boxParent.GetLocalWorldPosition(box.Prop.External.Position), 0.1f).SetEase(Ease.Linear);
